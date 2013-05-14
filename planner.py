@@ -1,4 +1,4 @@
-import sqlite3, sha, time, Cookie, os, datetime, hashlib
+import sha, time, Cookie, os, datetime, hashlib
 from bottle import get, post, route, debug, run, template, request, validate
 from bottle import static_file, url, response, redirect, install
 from bottle_redis import RedisPlugin
@@ -185,11 +185,18 @@ def newEvent_submit(rdb):
         return "Failed to create event"
 
 @post('/event/<user_id:re:\d+>/<event_id:re:\d+>')
+def add_newtask(rdb, user_id, event_id):
+    logged_in = account.isLoggedIn()
+    if logged_in:
+        return template('newtask.tpl', get_url=url, logged_in=logged_in, event_id=event_id)
+    else:
+        redirect('/userhome')
+
 @get('/event/<user_id:re:\d+>/<event_id:re:\d+>')
 def show_event(rdb, user_id, event_id):
     
     logged_in = account.isLoggedIn()
-    if logged_in:    #switched
+    if logged_in:   
         #get event info
         event_info = rdb.hgetall('event:' + str(user_id) + ':' + str(event_id))
         
@@ -227,7 +234,6 @@ def show_event(rdb, user_id, event_id):
             #return info to template
             event_info['tasks'] = tasks
         
-        #TODO: create template to display event info
         return template('event.tpl', get_url=url, logged_in=logged_in, row=event_info)
     
     else:
@@ -263,10 +269,10 @@ def delete_event(rdb, user_id, event_id):
 
 
 @get('/newtask')
-def newTask_route():
+def newTask_route(user_id, event_id):
     logged_in = account.isLoggedIn()
     if logged_in:
-        return template('newtask.tpl', get_url=url, logged_in=logged_in)
+        return template('newtask.tpl', get_url=url, logged_in=logged_in, event_id=event_id)
     else:
         redirect('/login')
 
@@ -274,6 +280,7 @@ def newTask_route():
 @post('/newtask')
 def newTask_submit(rdb):
     result = task.create_task(rdb)
+    print result
     #   result = (user_id , event_id)
     if result:
         #Where to redirect? show_task or show_event?
@@ -283,7 +290,6 @@ def newTask_submit(rdb):
     else:
         #failed to create event
         return "Failed to add task"
-
 
 @get('/newitem')
 def newItem_route():
